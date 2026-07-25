@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.asImageBitmap
 
 data class TimelineClipVisual(
     val id: String,

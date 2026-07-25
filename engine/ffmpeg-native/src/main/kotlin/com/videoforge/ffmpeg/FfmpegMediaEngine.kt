@@ -15,13 +15,13 @@ class FfmpegMediaEngine @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    suspend fun analyzeKeyframes(uri: Uri): LongArray? = withContext(Dispatchers.IO) {
+    suspend fun analyzeKeyframes(uri: Uri): List<Long>? = withContext(Dispatchers.IO) {
         if (!FfmpegBridge.isAvailable) return@withContext null
 
         val tempFile = copyToTemp(uri, "analyze")
 
         try {
-            FfmpegBridge.analyzeKeyframes(tempFile.absolutePath)
+            FfmpegBridge.analyzeKeyframes(tempFile.absolutePath)?.toList()
         } finally {
             tempFile.delete()
         }

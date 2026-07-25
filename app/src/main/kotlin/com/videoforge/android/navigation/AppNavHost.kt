@@ -27,6 +27,7 @@ import com.videoforge.android.ui.plugins.PluginsScreen
 import com.videoforge.android.ui.settings.SettingsScreen
 import com.videoforge.android.ui.shared.LocalAnimatedVisibilityScope
 import com.videoforge.android.ui.shared.LocalSharedTransitionScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 
 object AppRoutes {
     const val HOME = "home"
@@ -49,6 +50,7 @@ object AppRoutes {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier

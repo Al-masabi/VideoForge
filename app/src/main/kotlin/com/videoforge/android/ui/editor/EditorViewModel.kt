@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import javax.inject.Inject
+import com.videoforge.ffmpeg.FfmpegBridge
 
 data class EditorClipUi(
     val id: String,
@@ -126,7 +127,7 @@ class EditorViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (ffmpegEngine.isAvailable) {
+            if (FfmpegBridge.isAvailable) {
                 sourceKeyframes = ffmpegEngine.analyzeKeyframes(Uri.parse(assetUri))
                 refreshLosslessState()
             }
@@ -315,8 +316,8 @@ class EditorViewModel @Inject constructor(
             val mediaItems = clips.map { clip ->
                 MediaItem.Builder()
                     .setUri(Uri.parse(clip.assetUri))
-                    .setClipStartMs(clip.sourceInMs)
-                    .setClipEndMs(clip.sourceOutMs)
+                    .setClipStartPositionMs(clip.sourceInMs)
+                    .setClipEndPositionMs(clip.sourceOutMs)
                     .build()
             }
 

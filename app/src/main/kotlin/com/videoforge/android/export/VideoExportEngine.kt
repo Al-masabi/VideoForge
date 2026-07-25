@@ -196,8 +196,8 @@ class VideoExportEngine(
             val editedMediaItems = clips.map { clip ->
                 val mediaItem = MediaItem.Builder()
                     .setUri(inputUri)
-                    .setClipStartMs(clip.sourceInMs)
-                    .setClipEndMs(clip.sourceOutMs)
+                    .setClipStartPositionMs(clip.sourceInMs)
+                    .setClipEndPositionMs(clip.sourceOutMs)
                     .build()
 
                 EditedMediaItem.Builder(mediaItem).build()
