@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VideoForge</string>
+    <string name="back">رجوع</string>
+
+    <!-- Home -->
+    <string name="home_library_label">مكتبتك</string>
+    <string name="home_videos_count_label">فيديو</string>
+    <string name="home_total_duration_label">المدة الكلية</string>
+    <string name="home_total_size_label">الحجم الكلي</string>
+    <string name="section_quick_actions">إجراءات سريعة</string>
+    <string name="section_recent_files">آخر الملفات</string>
+    <string name="action_new_project">مشروع جديد</string>
+    <string name="action_open_video">فتح فيديو</string>
+    <string name="action_cut_video">قص فيديو</string>
+    <string name="action_compress_video">ضغط فيديو</string>
+    <string name="action_batch">معالجة دفعات</string>
+    <string name="action_settings">الإعدادات</string>
+    <string name="action_logs">سجل العمليات</string>
+    <string name="empty_recent_files">لا توجد ملفات مفتوحة بعد</string>
+    <string name="empty_projects">لا توجد مشاريع بعد</string>
+    <string name="empty_logs">لا توجد عمليات مسجلة بعد</string>
+
+    <!-- File Picker -->
+    <string name="file_picker_title">مكتبة الفيديو</string>
+    <string name="open_system_picker">فتح من النظام</string>
+    <string name="request_permission">السماح بالوصول</string>
+    <string name="permission_needed">لعرض الفيديوهات داخل الجهاز، امنح إذن الوصول إلى الوسائط.</string>
+    <string name="empty_videos">لا توجد فيديوهات متاحة</string>
+
+    <!-- Player -->
+    <string name="action_play">تشغيل</string>
+    <string name="action_pause">إيقاف مؤقت</string>
+    <string name="frame_back">إطار سابق</string>
+    <string name="frame_forward">إطار تالٍ</string>
+    <string name="set_point_a">نقطة A</string>
+    <string name="set_point_b">نقطة B</string>
+    <string name="clear_ab">إلغاء A-B</string>
+    <string name="ab_range">A %1$s → B %2$s</string>
+    <string name="open_editor">فتح المحرر</string>
+
+    <!-- Editor -->
+    <string name="editor_title">المحرر</string>
+    <string name="action_split">تقسيم</string>
+    <string name="action_trim_start">قص البداية</string>
+    <string name="action_trim_end">قص النهاية</string>
+    <string name="action_delete_clip">حذف المقطع</string>
+    <string name="action_add_marker">إضافة علامة</string>
+    <string name="undo">تراجع</string>
+    <string name="redo">إعادة</string>
+    <string name="clips_section">المقاطع</string>
+    <string name="markers_section">العلامات</string>
+    <string name="no_markers">لا توجد علامات</string>
+    <string name="delete_marker">حذف</string>
+    <string name="clip_number">مقطع %1$d</string>
+    <string name="markers_count">علامات: %1$d</string>
+    <string name="timeline_position">الموضع: %1$s / %2$s</string>
+    <string name="timeline_section">الخط الزمني</string>
+    <string name="timeline_zoom_fit">احتواء</string>
+    <string name="timeline_px_per_sec">%1$d بكسل/ث</string>
+    <string name="scrub_precise_frame">إطار دقيق</string>
+
+    <!-- Export -->
+    <string name="action_export">تصدير الفيديو</string>
+    <string name="export_started">بدأ التصدير</string>
+    <string name="export_channel_name">عمليات التصدير</string>
+    <string name="export_notification_title">تصدير الفيديو</string>
+    <string name="export_notification_text">جارٍ التصدير… %1$d%%</string>
+    <string name="export_success">اكتمل التصدير بنجاح</string>
+    <string name="export_failed">فشل التصدير</string>
+    <string name="export_cancelled">تم إلغاء التصدير</string>
+    <string name="cancel">إلغاء</string>
+    <string name="lossless_available">تصدير بلا خسارة متاح (نسخ مباشر عند الـ Keyframes)</string>
+    <string name="lossless_unavailable">الحدود بعيدة عن الـ Keyframes — سيتطلب إعادة ترميز</string>
+
+    <!-- Subtitles -->
+    <string name="subtitles_section">الترجمة</string>
+    <string name="import_subtitle">استيراد ترجمة</string>
+    <string name="delete_subtitle">حذف الترجمة المحددة</string>
+    <string name="no_subtitles">لا توجد ترجمة متاحة</string>
+
+    <!-- Compression -->
+    <string name="compress_title">ضغط الفيديو</string>
+    <string name="select_video_section">اختر فيديو</string>
+    <string name="compression_presets_section">إعدادات الضغط</string>
+    <string name="preset_fast">سريع</string>
+    <string name="preset_fast_desc">أسرع معالجة مع الحفاظ على جودة جيدة</string>
+    <string name="preset_balanced">متوازن</string>
+    <string name="preset_balanced_desc">توازن بين الحجم والسرعة والجودة</string>
+    <string name="preset_high_quality">جودة عالية</string>
+    <string name="preset_high_quality_desc">أفضل جودة ممكنة باستخدام HEVC</string>
+    <string name="preset_tiny">حجم صغير</string>
+    <string name="preset_tiny_desc">أصغر حجم ممكن مناسب للمشاركة</string>
+    <string name="codec_h264">H.264</string>
+    <string name="codec_hevc">HEVC</string>
+    <string name="estimated_size">الحجم التقديري</string>
+    <string name="original_size_label">الحجم الأصلي</string>
+    <string name="estimated_output_label">الحجم المتوقع</string>
+    <string name="savings_label">التوفير</string>
+    <string name="start_compression">بدء الضغط</string>
+    <string name="compression_started">بدأ الضغط</string>
+    <string name="compression_channel_name">عمليات الضغط</string>
+    <string name="compression_notification_title">ضغط الفيديو</string>
+    <string name="compression_notification_text">جارٍ الضغط… %1$d%%</string>
+    <string name="compression_success">اكتمل الضغط بنجاح</string>
+    <string name="compression_failed">فشل الضغط</string>
+    <string name="compression_cancelled">تم إلغاء الضغط</string>
+    <string name="no_videos_to_compress">لا توجد فيديوهات متاحة للضغط</string>
+
+    <!-- CRF + Target Size -->
+    <string name="compress_mode_preset">جاهز</string>
+    <string name="compress_mode_crf">CRF</string>
+    <string name="compress_mode_target">حجم مستهدف</string>
+    <string name="crf_quality_near_lossless">شبه بلا خسارة</string>
+    <string name="crf_quality_very_high">جودة عالية جدًا</string>
+    <string name="crf_quality_high">جودة عالية</string>
+    <string name="crf_quality_balanced">جودة متوازنة</string>
+    <string name="crf_quality_economy">جودة اقتصادية</string>
+    <string name="crf_min_label">16 — أقصى جودة</string>
+    <string name="crf_max_label">32 — أصغر حجم</string>
+    <string name="crf_speed_veryfast">أسرع</string>
+    <string name="crf_speed_fast">سريع</string>
+    <string name="crf_speed_medium">متوازن</string>
+    <string name="crf_speed_slow">أبطأ وأفضل</string>
+    <string name="engine_ffmpeg_ready">محرك FFmpeg — CRF حقيقي</string>
+    <string name="engine_fallback">محرك النظام — تقدير تقريبي لمعدل البت</string>
+    <string name="target_bitrate_label">معدل الفيديو الناتج: %1$s</string>
+    <string name="target_too_low">الحجم صغير جدًا — قد تتدهور الجودة بشدة</string>
+    <string name="estimation_source_label">الأصلي</string>
+    <string name="estimation_result_label">النتيجة</string>
+    <string name="estimation_savings_label">التوفير</string>
+
+    <!-- Batch -->
+    <string name="batch_title">معالجة الدفعات</string>
+    <string name="batch_add_section">أضف فيديوهات</string>
+    <string name="batch_settings_section">إعدادات الضغط</string>
+    <string name="batch_enqueue_count">إضافة %1$d فيديو إلى قائمة الانتظار</string>
+    <string name="batch_tasks_count">قائمة الانتظار (%1$d)</string>
+    <string name="batch_empty_queue">لا توجد مهام في قائمة الانتظار</string>
+    <string name="batch_cancel_all">إلغاء الكل</string>
+    <string name="task_state_pending">في الانتظار</string>
+    <string name="task_state_running">قيد التنفيذ</string>
+    <string name="task_state_completed">مكتملة</string>
+    <string name="task_state_failed">فشلت</string>
+    <string name="task_state_cancelled">ملغاة</string>
+    <string name="task_output">الناتج: %1$s</string>
+    <string name="task_channel_name">مهام الخلفية</string>
+    <string name="task_notification_title">مهام VideoForge</string>
+    <string name="task_notification_text">جارٍ التنفيذ… %1$d%%</string>
+    <string name="error_low_storage">لا توجد مساحة تخزين كافية لإكمال العملية</string>
+    <string name="error_cannot_create_output">تعذر إنشاء ملف الإخراج — تحقق من المجلد المحدد</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_version">الإصدار</string>
+    <string name="settings_output_section">مجلد الإخراج</string>
+    <string name="output_folder_current">المجلد الحالي: %1$s</string>
+    <string name="output_folder_default">مجلد Movies/VideoForge العام (مرئي في المعرض وملفاتي)</string>
+    <string name="output_folder_desc">تُحفظ نتائج المعالجة الدفعية في هذا المجلد، ويمكنك تغييره في أي وقت</string>
+    <string name="output_folder_change">تغيير المجلد</string>
+    <string name="settings_appearance_section">المظهر</string>
+    <string name="settings_tools_section">الأدوات</string>
+    <string name="settings_about_section">حول</string>
+    <string name="high_contrast_label">تباين عالٍ</string>
+    <string name="high_contrast_desc">تحسين وضوح النصوص والحدود لسهولة القراءة</string>
+
+    <!-- Projects / Logs -->
+    <string name="projects_title">المشاريع</string>
+    <string name="logs_title">سجل العمليات</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">تشخيص المطورين</string>
+    <string name="open_diagnostics">تشخيص المطورين</string>
+    <string name="device_class_label">فئة الجهاز</string>
+    <string name="device_class_low">جهاز منخفض</string>
+    <string name="device_class_mid">جهاز متوسط</string>
+    <string name="device_class_high">جهاز قوي</string>
+    <string name="ram_label">الذاكرة</string>
+    <string name="cores_label">الأنوية</string>
+    <string name="abi_label">المعمارية</string>
+    <string name="free_storage_label">المساحة الحرة</string>
+    <string name="live_meters_label">قراءات حية</string>
+    <string name="thermal_label">درجة الحرارة</string>
+    <string name="thermal_0">طبيعية</string>
+    <string name="thermal_1">خفيفة</string>
+    <string name="thermal_2">متوسطة</string>
+    <string name="thermal_3">مرتفعة</string>
+    <string name="thermal_4">حرجة</string>
+    <string name="thermal_5">طارئة</string>
+    <string name="battery_label">البطارية</string>
+    <string name="charging">قيد الشحن</string>
+    <string name="not_charging">غير مشحونة</string>
+    <string name="memory_label">استهلاك الذاكرة</string>
+    <string name="policy_label">سياسة الأداء الحالية</string>
+    <string name="policy_threads">خيوط المعالجة</string>
+    <string name="policy_thumbnails">الصور المصغرة</string>
+    <string name="policy_cache">كاش الصور</string>
+    <string name="policy_max_bitrate">أقصى معدل بت</string>
+    <string name="policy_concurrent">المهام المتزامنة</string>
+    <string name="policy_thermal_pause">إيقاف حراري</string>
+    <string name="enabled_label">مفعل</string>
+    <string name="disabled_label">معطل</string>
+    <string name="codecs_label">دعم الترميز العتادي</string>
+    <string name="codec_supported">مدعوم</string>
+    <string name="codec_unsupported">غير مدعوم</string>
+
+    <!-- Plugins -->
+    <string name="plugins_title">الإضافات</string>
+    <string name="open_plugins">الإضافات</string>
+    <string name="plugins_console_label">وحدة الإضافات</string>
+    <string name="plugins_api_label">API v1</string>
+    <string name="plugins_active_label">نشطة</string>
+    <string name="plugins_built_in">مدمجة</string>
+    <string name="plugin_type_filter">فلترة</string>
+    <string name="plugin_type_subtitle">ترجمة</string>
+    <string name="plugin_type_export">تصدير</string>
+    <string name="plugin_type_analysis">تحليل</string>
+    <string name="plugin_run_analysis">تشغيل على آخر فيديو</string>
+    <string name="plugin_analyzing">جارٍ التحليل…</string>
+    <string name="plugin_target">الهدف: %1$s</string>
+    <string name="plugin_subtitle_note">تُطبّق تلقائيًا عند استيراد الترجمة</string>
+</resources>
