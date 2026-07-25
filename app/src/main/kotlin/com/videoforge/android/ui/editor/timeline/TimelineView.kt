@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -223,7 +222,7 @@ fun TimelineView(
 
                     val stepPx = rulerStepSec * scale
                     val firstVisibleSec = scrollPx / scale
-                    val startSec = floor(firstVisibleSec / rulerStepSec) * rulerStepSec
+                    val startSec = kotlin.math.floor(firstVisibleSec / rulerStepSec) * rulerStepSec
                     var second = startSec
 
                     while (second * scale - scrollPx < size.width + stepPx) {
@@ -279,10 +278,7 @@ fun TimelineView(
                             right = blockRect.right,
                             bottom = blockRect.bottom
                         ) {
-                            drawRect(
-                                if (clip.selected) colors.primaryContainer else colors.surfaceVariant,
-                                blockRect
-                            )
+                            drawRect(color = if (clip.selected) colors.primaryContainer else colors.surfaceVariant)
 
                             val clipFrames = frames.filter {
                                 it.timelinePositionMs >= clip.timelineStartMs &&

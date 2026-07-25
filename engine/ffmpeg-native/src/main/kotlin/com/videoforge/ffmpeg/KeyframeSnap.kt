@@ -1,7 +1,9 @@
-package com.videoforge.engine.ffmpeg
+package com.videoforge.ffmpeg
 
 import com.videoforge.core.subtitle.ClipSegment
 import kotlin.math.abs
+
+typealias CutSegment = ClipSegment
 
 object KeyframeSnap {
 

@@ -2,7 +2,7 @@ package com.videoforge.android.ui.logs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.videoforge.core.data.logs.OperationLog
+import com.videoforge.core.data.model.OperationLog
 import com.videoforge.core.data.logs.OperationLogRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted

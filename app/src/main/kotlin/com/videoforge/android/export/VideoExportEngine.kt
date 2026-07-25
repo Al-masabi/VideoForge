@@ -167,7 +167,7 @@ class VideoExportEngine(
     ): Boolean {
         val keyframes = ffmpegEngine.analyzeKeyframes(inputUri) ?: return false
 
-        val rawSegments = clips.map { clip ->
+        val rawSegments: List<CutSegment> = clips.map { clip ->
             CutSegment(clip.sourceInMs, clip.sourceOutMs)
         }
 
@@ -193,25 +193,22 @@ class VideoExportEngine(
         val cacheFile = File(context.cacheDir, "export_${System.currentTimeMillis()}.mp4")
 
         try {
-            val mediaItems = clips.map { clip ->
-                val builder = MediaItem.Builder().setUri(inputUri)
+            val editedMediaItems = clips.map { clip ->
+                val mediaItem = MediaItem.Builder()
+                    .setUri(inputUri)
+                    .setClipStartMs(clip.sourceInMs)
+                    .setClipEndMs(clip.sourceOutMs)
+                    .build()
 
-                if (clip.sourceInMs > 0L) {
-                    builder.setClipStartMs(clip.sourceInMs)
-                }
-
-                if (clip.sourceOutMs < Long.MAX_VALUE) {
-                    builder.setClipEndMs(clip.sourceOutMs)
-                }
-
-                EditedMediaItem.Builder(builder.build()).build()
+                EditedMediaItem.Builder(mediaItem).build()
             }
 
-            val items = mediaItems.ifEmpty {
+            val items = editedMediaItems.ifEmpty {
                 listOf(EditedMediaItem.Builder(MediaItem.fromUri(inputUri)).build())
             }
 
             val sequence = EditedMediaItemSequence(items)
+            val composition = Composition.Builder(listOf(sequence)).build()
 
             val completion = CompletableDeferred<Result<Unit>>()
 
@@ -235,7 +232,7 @@ class VideoExportEngine(
                 .build()
 
             currentTransformer = transformer
-            transformer.start(sequence, cacheFile.absolutePath)
+            transformer.start(composition, cacheFile.absolutePath)
 
             val progressHolder = ProgressHolder()
 

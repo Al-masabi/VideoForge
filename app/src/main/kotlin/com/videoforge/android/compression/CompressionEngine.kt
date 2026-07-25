@@ -6,11 +6,10 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
-import androidx.media3.transformer.EditedMediaItemSequence
-import androidx.media3.transformer.EncodingSettings
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
+import com.videoforge.android.task.CompressionOutcome
 import com.videoforge.ffmpeg.FfmpegBridge
 import com.videoforge.ffmpeg.FfmpegMediaEngine
 import kotlinx.coroutines.CompletableDeferred
@@ -62,12 +61,6 @@ class CompressionEngine(
         val cacheFile = File(context.cacheDir, "compress_${System.currentTimeMillis()}.mp4")
 
         try {
-            val sizeBytes = context.contentResolver
-                .openFileDescriptor(inputUri, "r")
-                ?.use { it.statSize } ?: 0L
-
-            val durationMs = readDuration(inputUri)
-
             when (mode) {
                 is CompressionMode.Crf -> {
                     val crfSucceeded = FfmpegBridge.isAvailable &&
@@ -82,41 +75,15 @@ class CompressionEngine(
                         return@withContext CompressionOutcome.Success(input, outputUri.toString())
                     }
 
-                    val sourceBitrate = CompressionPresets.estimatedSourceBitrate(sizeBytes, durationMs)
-                    val fallbackBitrate = CompressionPresets
-                        .bitrateForCrf(sourceBitrate, mode.crf)
-                        .coerceAtMost(maxVideoBitrate)
-
-                    transcodeWithBitrate(inputUri, outputUri, cacheFile, fallbackBitrate, 128_000, onProgress)
+                    transcode(inputUri, outputUri, cacheFile, onProgress)
                 }
 
                 is CompressionMode.TargetSize -> {
-                    val videoBitrate = CompressionPresets
-                        .bitrateForTargetSize(mode.targetBytes, durationMs, 128_000)
-                        .coerceAtMost(maxVideoBitrate)
-
-                    transcodeWithBitrate(inputUri, outputUri, cacheFile, videoBitrate, 128_000, onProgress)
+                    transcode(inputUri, outputUri, cacheFile, onProgress)
                 }
 
                 is CompressionMode.Preset -> {
-                    val preset = CompressionPresets.byIdOrFirst(mode.presetId)
-
-                    val settings = CompressionPresets.settingsFor(
-                        preset = preset,
-                        sizeBytes = sizeBytes,
-                        durationMs = durationMs,
-                        maxVideoBitrate = maxVideoBitrate,
-                        encoderSupportChecker = { mime -> encoderMimes.contains(mime.lowercase()) }
-                    )
-
-                    transcodeWithBitrate(
-                        inputUri,
-                        outputUri,
-                        cacheFile,
-                        settings.videoBitrate,
-                        settings.audioBitrate,
-                        onProgress
-                    )
+                    transcode(inputUri, outputUri, cacheFile, onProgress)
                 }
             }
 
@@ -129,26 +96,18 @@ class CompressionEngine(
         }
     }
 
-    private suspend fun transcodeWithBitrate(
+    private suspend fun transcode(
         inputUri: Uri,
         outputUri: Uri,
         cacheFile: File,
-        videoBitrate: Int,
-        audioBitrate: Int,
         onProgress: (Int) -> Unit
     ) {
         val mediaItem = MediaItem.fromUri(inputUri)
         val editedMediaItem = EditedMediaItem.Builder(mediaItem).build()
-        val sequence = EditedMediaItemSequence(listOf(editedMediaItem))
 
         val completion = CompletableDeferred<Result<Unit>>()
 
         val transformer = Transformer.Builder(context)
-            .setEncodingSettings(
-                EncodingSettings.Builder()
-                    .setBitrate(videoBitrate)
-                    .build()
-            )
             .addListener(object : Transformer.Listener {
                 override fun onCompleted(
                     composition: Composition,
@@ -168,7 +127,7 @@ class CompressionEngine(
             .build()
 
         currentTransformer = transformer
-        transformer.start(sequence, cacheFile.absolutePath)
+        transformer.start(editedMediaItem, cacheFile.absolutePath)
 
         val progressHolder = ProgressHolder()
 
@@ -195,20 +154,6 @@ class CompressionEngine(
             context.contentResolver.openOutputStream(outputUri)?.use { output ->
                 input.copyTo(output)
             }
-        }
-    }
-
-    private fun readDuration(uri: Uri): Long {
-        val retriever = android.media.MediaMetadataRetriever()
-
-        return try {
-            retriever.setDataSource(context, uri)
-            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                ?.toLongOrNull() ?: 0L
-        } catch (exception: Exception) {
-            0L
-        } finally {
-            retriever.release()
         }
     }
 }

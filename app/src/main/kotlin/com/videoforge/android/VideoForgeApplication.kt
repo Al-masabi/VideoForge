@@ -47,7 +47,7 @@ class VideoForgeApplication : Application(), ImageLoaderFactory {
             }
             .memoryCache(
                 MemoryCache.Builder(this)
-                    .maxSizeBytes(policy.imageCacheBytes)
+                    .maxSizeBytes(policy.imageCacheBytes.toInt())
                     .build()
             )
             .crossfade(true)

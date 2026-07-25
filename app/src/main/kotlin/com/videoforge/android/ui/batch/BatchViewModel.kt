@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.videoforge.core.data.model.MediaAsset
 import com.videoforge.core.data.repository.MediaRepository
-import com.videoforge.core.data.task.TaskInfo
+import com.videoforge.core.data.model.TaskInfo
 import com.videoforge.core.data.task.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

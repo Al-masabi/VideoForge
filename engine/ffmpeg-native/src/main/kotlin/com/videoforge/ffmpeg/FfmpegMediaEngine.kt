@@ -1,4 +1,4 @@
-package com.videoforge.engine.ffmpeg
+package com.videoforge.ffmpeg
 
 import android.content.Context
 import android.net.Uri

@@ -21,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.videoforge.android.task.CompressionOutcome
 
 @AndroidEntryPoint
 class CompressionService : Service() {

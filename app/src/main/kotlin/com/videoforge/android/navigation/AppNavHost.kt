@@ -24,14 +24,12 @@ import com.videoforge.android.ui.home.HomeScreen
 import com.videoforge.android.ui.logs.LogsScreen
 import com.videoforge.android.ui.player.PlayerScreen
 import com.videoforge.android.ui.plugins.PluginsScreen
-import com.videoforge.android.ui.projects.ProjectsScreen
 import com.videoforge.android.ui.settings.SettingsScreen
 import com.videoforge.android.ui.shared.LocalAnimatedVisibilityScope
 import com.videoforge.android.ui.shared.LocalSharedTransitionScope
 
 object AppRoutes {
     const val HOME = "home"
-    const val PROJECTS = "projects"
     const val SETTINGS = "settings"
     const val LOGS = "logs"
     const val FILE_PICKER = "file_picker"
@@ -78,21 +76,13 @@ fun AppNavHost(
                 composable(AppRoutes.HOME) {
                     CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
                         HomeScreen(
-                            onNavigateToProjects = { navController.navigate(AppRoutes.PROJECTS) },
+                            onNavigateToProjects = { navController.navigate(AppRoutes.FILE_PICKER) },
                             onNavigateToFilePicker = { navController.navigate(AppRoutes.FILE_PICKER) },
                             onNavigateToCompress = { navController.navigate(AppRoutes.COMPRESS) },
                             onNavigateToBatch = { navController.navigate(AppRoutes.BATCH) },
                             onNavigateToSettings = { navController.navigate(AppRoutes.SETTINGS) },
                             onNavigateToLogs = { navController.navigate(AppRoutes.LOGS) },
                             onOpenVideo = { uri -> navController.navigate(AppRoutes.playerRoute(uri)) }
-                        )
-                    }
-                }
-
-                composable(AppRoutes.PROJECTS) {
-                    CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
-                        ProjectsScreen(
-                            onBack = { navController.popBackStack() }
                         )
                     }
                 }

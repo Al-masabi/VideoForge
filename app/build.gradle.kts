@@ -113,6 +113,7 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.transformer)
     implementation(libs.androidx.media3.effect)
+        implementation("androidx.compose.material:material-icons-extended")
 
     implementation(libs.androidx.profileinstaller)
 
