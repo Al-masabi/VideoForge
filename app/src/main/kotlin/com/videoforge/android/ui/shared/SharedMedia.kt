@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSharedTransitionApi::class)
+
 package com.videoforge.android.ui.shared
 
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -10,7 +12,6 @@ import androidx.compose.ui.Modifier
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
 val LocalAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun Modifier.vfSharedMedia(key: String): Modifier {
     val sharedScope = LocalSharedTransitionScope.current ?: return this
@@ -24,7 +25,6 @@ fun Modifier.vfSharedMedia(key: String): Modifier {
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun Modifier.vfSharedMediaBounds(key: String): Modifier {
     val sharedScope = LocalSharedTransitionScope.current ?: return this

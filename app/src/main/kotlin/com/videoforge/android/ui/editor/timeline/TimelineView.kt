@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
-import androidx.compose.ui.graphics.asImageBitmap
 
 data class TimelineClipVisual(
     val id: String,
@@ -286,7 +285,8 @@ fun TimelineView(
                                     it.timelinePositionMs < clip.timelineStartMs + clip.durationMs
                             }
 
-                            clipFrames.forEachIndexed { index, frame ->
+                            for (index in clipFrames.indices) {
+                                val frame = clipFrames[index]
                                 val frameX = frame.timelinePositionMs / 1000f * scale - scrollPx
                                 val nextX = if (index == clipFrames.lastIndex) {
                                     x0 + blockWidth
