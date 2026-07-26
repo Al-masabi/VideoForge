@@ -31,6 +31,12 @@ interface EditorRepository {
         clipId: String
     )
 
+    suspend fun deleteTimelineRange(
+        timelineId: String,
+        rangeStartMs: Long,
+        rangeEndMs: Long
+    )
+
     suspend fun addMarker(
         timelineId: String,
         clipId: String,
