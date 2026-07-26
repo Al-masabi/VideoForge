@@ -2,7 +2,9 @@ package com.videoforge.android.export
 
 import android.content.Context
 import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
@@ -64,6 +66,7 @@ class VideoExportEngine(
         outputUri: Uri,
         clips: List<ExportClip>,
         sourceDurationMs: Long,
+        subtitleUri: Uri? = null,
         onProgress: (Int) -> Unit
     ): ExportOutcome = withContext(Dispatchers.IO) {
         cancelled = false
@@ -71,7 +74,7 @@ class VideoExportEngine(
         val input = inputUri.toString()
 
         try {
-            when (chooseStrategy(clips, sourceDurationMs)) {
+            when (chooseStrategy(clips, sourceDurationMs, subtitleUri != null)) {
                 ExportStrategy.WHOLE_COPY -> {
                     copyWholeFile(inputUri, outputUri, onProgress)
                     ExportOutcome.Success(input, outputUri.toString(), "COPY")
@@ -83,13 +86,13 @@ class VideoExportEngine(
                     if (losslessSucceeded) {
                         ExportOutcome.Success(input, outputUri.toString(), "LOSSLESS")
                     } else {
-                        transcodeExport(inputUri, outputUri, clips, onProgress)
+                        transcodeExport(inputUri, outputUri, clips, subtitleUri, onProgress)
                         ExportOutcome.Success(input, outputUri.toString(), "TRANSCODE_FALLBACK")
                     }
                 }
 
                 ExportStrategy.TRANSCODE -> {
-                    transcodeExport(inputUri, outputUri, clips, onProgress)
+                    transcodeExport(inputUri, outputUri, clips, subtitleUri, onProgress)
                     ExportOutcome.Success(input, outputUri.toString(), "TRANSCODE")
                 }
             }
@@ -104,8 +107,13 @@ class VideoExportEngine(
 
     private fun chooseStrategy(
         clips: List<ExportClip>,
-        sourceDurationMs: Long
+        sourceDurationMs: Long,
+        hasSubtitle: Boolean
     ): ExportStrategy {
+        if (hasSubtitle) {
+            return ExportStrategy.TRANSCODE
+        }
+
         if (clips.isEmpty()) return ExportStrategy.WHOLE_COPY
 
         if (clips.size == 1) {
@@ -188,23 +196,18 @@ class VideoExportEngine(
         inputUri: Uri,
         outputUri: Uri,
         clips: List<ExportClip>,
+        subtitleUri: Uri?,
         onProgress: (Int) -> Unit
     ) {
         val cacheFile = File(context.cacheDir, "export_${System.currentTimeMillis()}.mp4")
 
         try {
             val editedMediaItems = clips.map { clip ->
-                val mediaItem = MediaItem.Builder()
-                    .setUri(inputUri)
-                    .setClipStartPositionMs(clip.sourceInMs)
-                    .setClipEndPositionMs(clip.sourceOutMs)
-                    .build()
-
-                EditedMediaItem.Builder(mediaItem).build()
+                EditedMediaItem.Builder(buildMediaItem(inputUri, clip, subtitleUri)).build()
             }
 
             val items = editedMediaItems.ifEmpty {
-                listOf(EditedMediaItem.Builder(MediaItem.fromUri(inputUri)).build())
+                listOf(EditedMediaItem.Builder(buildMediaItem(inputUri, null, subtitleUri)).build())
             }
 
             val sequence = EditedMediaItemSequence(items)
@@ -264,6 +267,35 @@ class VideoExportEngine(
             currentTransformer = null
             cacheFile.delete()
         }
+    }
+
+    private fun buildMediaItem(
+        inputUri: Uri,
+        clip: ExportClip?,
+        subtitleUri: Uri?
+    ): MediaItem {
+        val builder = MediaItem.Builder().setUri(inputUri)
+
+        if (clip != null) {
+            builder
+                .setClipStartPositionMs(clip.sourceInMs)
+                .setClipEndPositionMs(clip.sourceOutMs)
+        }
+
+        if (subtitleUri != null) {
+            val subtitle = MediaItem.SubtitleConfiguration.Builder(subtitleUri)
+                .setMimeType(subtitleMimeType(subtitleUri))
+                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                .build()
+            builder.setSubtitleConfigurations(listOf(subtitle))
+        }
+
+        return builder.build()
+    }
+
+    private fun subtitleMimeType(uri: Uri): String {
+        val path = uri.path.orEmpty().lowercase()
+        return if (path.endsWith(".vtt")) MimeTypes.TEXT_VTT else MimeTypes.APPLICATION_SUBRIP
     }
 
     private enum class ExportStrategy {
