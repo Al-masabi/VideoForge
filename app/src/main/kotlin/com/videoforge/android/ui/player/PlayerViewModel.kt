@@ -1,5 +1,5 @@
 package com.videoforge.android.ui.player
-
+import android.provider.OpenableColumns
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -51,7 +51,7 @@ class PlayerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         PlayerUiState(
             uri = uri.toString(),
-            fileName = uri.lastPathSegment.orEmpty()
+            fileName = cleanName(uri.lastPathSegment.orEmpty())
         )
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -72,6 +72,39 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             loadThumbnails()
         }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val resolved = resolveName(uri)
+            _uiState.update { it.copy(fileName = resolved) }
+        }
+    }
+
+    private fun resolveName(uri: Uri): String {
+        val fromProvider = runCatching {
+            context.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()
+
+        return cleanName(fromProvider ?: uri.lastPathSegment ?: "video")
+    }
+
+    private fun cleanName(raw: String): String {
+        var name = raw
+        if (name.contains(":")) name = name.substringAfterLast(":")
+        if (name.contains("/")) name = name.substringAfterLast("/")
+        name = runCatching { java.net.URLDecoder.decode(name, "UTF-8") }.getOrDefault(name)
+        return name.ifBlank { "video" }
     }
 
     fun togglePlayPause() {

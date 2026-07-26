@@ -38,12 +38,7 @@ private val CardShape = RoundedCornerShape(12.dp)
 private val luminousEdge: BorderStroke
     @Composable get() = BorderStroke(
         1.dp,
-        Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = 0.09f),
-                Color.White.copy(alpha = 0.015f)
-            )
-        )
+        MaterialTheme.colorScheme.outlineVariant
     )
 
 @Composable
@@ -124,7 +119,8 @@ fun VfCard(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            border = luminousEdge
+            border = luminousEdge,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -138,7 +134,8 @@ fun VfCard(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            border = luminousEdge
+            border = luminousEdge,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -169,7 +166,8 @@ fun VfActionCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = luminousEdge
+        border = luminousEdge,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
