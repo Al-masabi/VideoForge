@@ -71,7 +71,9 @@ data class EditorUiState(
     val canRedo: Boolean = false,
     val losslessAvailable: Boolean? = null,
     val timelineFrames: List<TimelineFrameVisual> = emptyList(),
-    val waveformPeaks: FloatArray? = null
+    val waveformPeaks: FloatArray? = null,
+    val pendingDeleteStartMs: Long? = null,
+    val pendingDeleteEndMs: Long? = null
 )
 
 @HiltViewModel
@@ -219,6 +221,62 @@ class EditorViewModel @Inject constructor(
                 true
             } == true
             _events.emit(if (changed) "تم حذف المقطع" else "تعذّر حذف المقطع")
+        }
+    }
+
+    fun markDeleteStart() {
+        val pos = _uiState.value.timelinePositionMs
+        _uiState.update { it.copy(pendingDeleteStartMs = pos) }
+        viewModelScope.launch { _events.emit("بداية الحذف: ${pos.formatDuration()}") }
+    }
+
+    fun markDeleteEnd() {
+        val pos = _uiState.value.timelinePositionMs
+        _uiState.update { it.copy(pendingDeleteEndMs = pos) }
+        viewModelScope.launch { _events.emit("نهاية الحذف: ${pos.formatDuration()}") }
+    }
+
+    fun clearDeleteSelection() {
+        _uiState.update { it.copy(pendingDeleteStartMs = null, pendingDeleteEndMs = null) }
+    }
+
+    fun commitDeleteRange() {
+        val s = _uiState.value
+        val timelineId = s.timelineId ?: return
+        val a = s.pendingDeleteStartMs
+        val b = s.pendingDeleteEndMs
+
+        if (a == null || b == null) {
+            viewModelScope.launch { _events.emit("حدّد بداية ونهاية الحذف أولًا") }
+            return
+        }
+
+        val start = minOf(a, b)
+        val end = maxOf(a, b)
+
+        if (end - start < 50L) {
+            viewModelScope.launch { _events.emit("النطاق صغير جدًا — وسّع المسافة بين النقطتين") }
+            return
+        }
+
+        if (start <= 0L && end >= s.timelineDurationMs) {
+            viewModelScope.launch { _events.emit("لا يمكن حذف الفيديو كاملًا") }
+            return
+        }
+
+        viewModelScope.launch {
+            val before = clipSignature(s.clips)
+            editorRepository.deleteTimelineRange(timelineId, start, end)
+            val changed = withTimeoutOrNull(1500) {
+                _uiState.first { clipSignature(it.clips) != before }
+                true
+            } == true
+            if (changed) {
+                _uiState.update { it.copy(pendingDeleteStartMs = null, pendingDeleteEndMs = null) }
+                _events.emit("تم حذف النطاق المحدّد")
+            } else {
+                _events.emit("تعذّر حذف النطاق")
+            }
         }
     }
 
