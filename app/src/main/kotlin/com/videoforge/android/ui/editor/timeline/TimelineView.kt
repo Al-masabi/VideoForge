@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
-
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -79,6 +78,8 @@ fun TimelineView(
     onScrubbing: (Boolean) -> Unit,
     onSelectClip: (String) -> Unit,
     onScaleChange: (Float) -> Unit,
+    deleteRangeStartMs: Long? = null,
+    deleteRangeEndMs: Long? = null,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
@@ -391,6 +392,46 @@ fun TimelineView(
                             )
                         }
                     }
+
+                    val dStart = deleteRangeStartMs
+                    val dEnd = deleteRangeEndMs
+                    if (dStart != null && dEnd != null) {
+                        val rStart = minOf(dStart, dEnd)
+                        val rEnd = maxOf(dStart, dEnd)
+
+                        if (rEnd - rStart >= 50L) {
+                            val rx0 = rStart / 1000f * scale - scrollPx
+                            val rx1 = rEnd / 1000f * scale - scrollPx
+                            val left = rx0.coerceIn(0f, size.width)
+                            val right = rx1.coerceIn(0f, size.width)
+
+                            if (right > left) {
+                                drawRect(
+                                    color = colors.error.copy(alpha = 0.42f),
+                                    topLeft = Offset(left, blockTop),
+                                    size = Size(right - left, blockBottom - blockTop)
+                                )
+                            }
+
+                            if (rx0 in 0f..size.width) {
+                                drawLine(
+                                    colors.error,
+                                    Offset(rx0, blockTop - 2.dp.toPx()),
+                                    Offset(rx0, blockBottom + 2.dp.toPx()),
+                                    2.5.dp.toPx()
+                                )
+                            }
+
+                            if (rx1 in 0f..size.width) {
+                                drawLine(
+                                    colors.error,
+                                    Offset(rx1, blockTop - 2.dp.toPx()),
+                                    Offset(rx1, blockBottom + 2.dp.toPx()),
+                                    2.5.dp.toPx()
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (peaks != null) {
@@ -414,7 +455,7 @@ fun TimelineView(
                                 val timelineMs = (scrollPx + x) / scale * 1000f
                                 val clip = clips.firstOrNull {
                                     timelineMs >= it.timelineStartMs &&
-                                        timelineMs < it.timelineStartMs + it.durationMs
+                                        timelineMs < it.timelineStartMs + clip.durationMs
                                 }
                                 if (clip != null) {
                                     val sourceMs = clip.sourceInMs + (timelineMs - clip.timelineStartMs)
