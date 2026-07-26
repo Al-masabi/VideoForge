@@ -310,6 +310,30 @@ fun EditorScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = MaterialTheme.typography.bodySmall.lineHeight
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+
+                        Text(
+                            text = "لحذف جزء من الوسط (يبقى ما حوله):",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Text(
+                            text = "١) حرّك المؤشر لبداية الجزء ← «تقسيم».\n" +
+                                "٢) حرّك المؤشر لنهاية الجزء ← «تقسيم» (يصير ٣ مقاطع).\n" +
+                                "٣) اضغط المقطع الأوسط في الخط الزمني لتحديده.\n" +
+                                "٤) «حذف المقطع» ← يبقى الأول والأخير فقط.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                        )
                     }
                 }
 
