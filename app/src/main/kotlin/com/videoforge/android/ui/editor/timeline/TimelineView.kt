@@ -455,7 +455,7 @@ fun TimelineView(
                                 val timelineMs = (scrollPx + x) / scale * 1000f
                                 val clip = clips.firstOrNull {
                                     timelineMs >= it.timelineStartMs &&
-                                        timelineMs < it.timelineStartMs + clip.durationMs
+                                        timelineMs < it.timelineStartMs + it.durationMs
                                 }
                                 if (clip != null) {
                                     val sourceMs = clip.sourceInMs + (timelineMs - clip.timelineStartMs)
