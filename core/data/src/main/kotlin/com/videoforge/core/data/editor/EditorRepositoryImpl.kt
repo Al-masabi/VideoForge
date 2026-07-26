@@ -254,6 +254,98 @@ class EditorRepositoryImpl @Inject constructor(
         commitEdit(timelineId, newClips, newMarkers)
     }
 
+    override suspend fun deleteTimelineRange(
+        timelineId: String,
+        rangeStartMs: Long,
+        rangeEndMs: Long
+    ) {
+        val clips = clipDao.getByTimeline(timelineId)
+        val markers = markerDao.getByTimeline(timelineId)
+
+        if (clips.isEmpty()) return
+
+        val totalDuration = clips.sumOf { it.sourceOutMs - it.sourceInMs }
+        val rangeStart = rangeStartMs.coerceIn(0L, totalDuration)
+        val rangeEnd = rangeEndMs.coerceIn(0L, totalDuration)
+        if (rangeEnd <= rangeStart) return
+
+        data class CutInfo(
+            val firstPartId: String?,
+            val secondPartId: String?,
+            val localStart: Long,
+            val localEnd: Long,
+            val removedLen: Long
+        )
+
+        val cutByClip = mutableMapOf<String, CutInfo>()
+        val newClips = mutableListOf<ClipEntity>()
+
+        var cursor = 0L
+        for (clip in clips) {
+            val clipStart = cursor
+            val duration = clip.sourceOutMs - clip.sourceInMs
+            cursor += duration
+            val clipEnd = clipStart + duration
+
+            val interStart = maxOf(rangeStart, clipStart)
+            val interEnd = minOf(rangeEnd, clipEnd)
+
+            if (interEnd <= interStart) {
+                newClips.add(clip)
+                continue
+            }
+
+            val localStart = (interStart - clipStart).coerceIn(0L, duration)
+            val localEnd = (interEnd - clipStart).coerceIn(0L, duration)
+            val removedLen = localEnd - localStart
+            val hasFirst = localStart > 0L
+            val hasSecond = localEnd < duration
+
+            if (!hasFirst && !hasSecond) {
+                cutByClip[clip.id] = CutInfo(null, null, localStart, localEnd, removedLen)
+                continue
+            }
+
+            val firstPartId = if (hasFirst) clip.id else null
+            val secondPartId = if (hasSecond) UUID.randomUUID().toString() else null
+
+            if (hasFirst) {
+                newClips.add(clip.copy(sourceOutMs = clip.sourceInMs + localStart))
+            }
+            if (hasSecond) {
+                newClips.add(
+                    ClipEntity(
+                        id = secondPartId!!,
+                        timelineId = timelineId,
+                        assetUri = clip.assetUri,
+                        sourceInMs = clip.sourceInMs + localEnd,
+                        sourceOutMs = clip.sourceOutMs,
+                        ordinal = 0
+                    )
+                )
+            }
+
+            cutByClip[clip.id] = CutInfo(firstPartId, secondPartId, localStart, localEnd, removedLen)
+        }
+
+        if (newClips.isEmpty()) return
+
+        val newMarkers = markers.mapNotNull { marker ->
+            val cut = cutByClip[marker.clipId] ?: return@mapNotNull marker
+            val m = marker.offsetMs
+            when {
+                cut.firstPartId != null && m <= cut.localStart -> marker.copy(clipId = cut.firstPartId)
+                cut.secondPartId != null && m >= cut.localEnd -> marker.copy(
+                    clipId = cut.secondPartId,
+                    offsetMs = m - cut.removedLen
+                )
+                else -> null
+            }
+        }
+
+        commitEdit(timelineId, newClips, newMarkers)
+    }
+
     override suspend fun addMarker(
         timelineId: String,
         clipId: String,
