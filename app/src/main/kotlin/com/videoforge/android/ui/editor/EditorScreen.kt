@@ -88,6 +88,9 @@ fun EditorScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val hasSelection = state.selectedClipId != null
+
     LaunchedEffect(viewModel) {
         viewModel.events.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()

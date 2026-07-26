@@ -19,6 +19,7 @@ import com.videoforge.core.data.editor.EditorRepository
 import com.videoforge.core.data.editor.EditorState
 import com.videoforge.core.media.WaveformExtractor
 import com.videoforge.ffmpeg.CutSegment
+import com.videoforge.ffmpeg.FfmpegBridge
 import com.videoforge.ffmpeg.FfmpegMediaEngine
 import com.videoforge.ffmpeg.KeyframeSnap
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,11 +35,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
-import com.videoforge.ffmpeg.FfmpegBridge
+import kotlin.math.roundToInt
 
 data class EditorClipUi(
     val id: String,
@@ -104,6 +104,8 @@ class EditorViewModel @Inject constructor(
         }
     }
 
+    private val _uiState = MutableStateFlow(EditorUiState())
+    val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val events: SharedFlow<String> = _events.asSharedFlow()
@@ -144,7 +146,7 @@ class EditorViewModel @Inject constructor(
         _uiState.update { it.copy(selectedClipId = clipId) }
     }
 
-        fun splitSelectedClip() {
+    fun splitSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         viewModelScope.launch {
@@ -161,11 +163,8 @@ class EditorViewModel @Inject constructor(
             _events.emit(if (changed) "تم تقسيم المقطع" else "حرّك المؤشر لموضع التقسيم أولًا")
         }
     }
-            )
-        }
-    }
 
-        fun trimStartSelectedClip() {
+    fun trimStartSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         viewModelScope.launch {
@@ -182,11 +181,8 @@ class EditorViewModel @Inject constructor(
             _events.emit(if (changed) "تم قص البداية" else "لا يوجد شيء لقصّه عند هذا الموضع")
         }
     }
-            )
-        }
-    }
 
-        fun trimEndSelectedClip() {
+    fun trimEndSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         viewModelScope.launch {
@@ -203,11 +199,8 @@ class EditorViewModel @Inject constructor(
             _events.emit(if (changed) "تم قص النهاية" else "لا يوجد شيء لقصّه عند هذا الموضع")
         }
     }
-            )
-        }
-    }
 
-       fun deleteSelectedClip() {
+    fun deleteSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         if (_uiState.value.clips.size <= 1) {
@@ -228,9 +221,6 @@ class EditorViewModel @Inject constructor(
             _events.emit(if (changed) "تم حذف المقطع" else "تعذّر حذف المقطع")
         }
     }
-            )
-        }
-    }
 
     fun addMarkerToSelectedClip() {
         val params = selectedClipActionParams() ?: return
@@ -243,6 +233,7 @@ class EditorViewModel @Inject constructor(
                 offsetMs = params.third,
                 label = label
             )
+            _events.emit("تمت إضافة علامة")
         }
     }
 
@@ -251,6 +242,7 @@ class EditorViewModel @Inject constructor(
 
         viewModelScope.launch {
             editorRepository.deleteMarker(timelineId, markerId)
+            _events.emit("تم حذف العلامة")
         }
     }
 
@@ -259,6 +251,7 @@ class EditorViewModel @Inject constructor(
 
         viewModelScope.launch {
             editorRepository.undo(timelineId)
+            _events.emit("تم التراجع")
         }
     }
 
@@ -267,6 +260,7 @@ class EditorViewModel @Inject constructor(
 
         viewModelScope.launch {
             editorRepository.redo(timelineId)
+            _events.emit("تمت الإعادة")
         }
     }
 
@@ -305,6 +299,14 @@ class EditorViewModel @Inject constructor(
         }
 
         _uiState.update { it.copy(isPlaying = player.isPlaying) }
+    }
+
+    fun togglePlayPause() {
+        if (player.isPlaying) player.pause() else player.play()
+    }
+
+    fun stepFrame(direction: Int) {
+        seekTimeline(_uiState.value.timelinePositionMs + direction * FRAME_MS)
     }
 
     fun attachScrubSurface(surface: Surface) {
@@ -575,19 +577,12 @@ class EditorViewModel @Inject constructor(
         } else {
             clip.durationMs / 2L
         }
+
         return Triple(
             timelineId,
             clipId,
             offset.coerceIn(0L, clip.durationMs)
         )
-    }
-
-    fun togglePlayPause() {
-        if (player.isPlaying) player.pause() else player.play()
-    }
-
-    fun stepFrame(direction: Int) {
-        seekTimeline(_uiState.value.timelinePositionMs + direction * FRAME_MS)
     }
 
     private fun clipSignature(clips: List<EditorClipUi>): String {
@@ -596,8 +591,5 @@ class EditorViewModel @Inject constructor(
 
     companion object {
         private const val FRAME_MS = 33L
-    }
-}
-        )
     }
 }
