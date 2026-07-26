@@ -272,6 +272,154 @@ fun EditorScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.error)
+                            )
+
+                            Text(
+                                text = "حذف نطاق بنقرتين",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+
+                        Text(
+                            text = "حرّك المؤشر إلى بداية الجزء المراد حذفه واضغط «بداية الحذف»، ثم إلى نهايته واضغط «نهاية الحذف»، ثم «احذف النطاق». يبقى ما حول النطاق، وتُحذف الترجمة المطابقة معه.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.markDeleteStart() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "بداية الحذف")
+                                    Text(
+                                        text = "عند المؤشر",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = { viewModel.markDeleteEnd() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "نهاية الحذف")
+                                    Text(
+                                        text = "عند المؤشر",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        }
+
+                        val total = state.timelineDurationMs.coerceAtLeast(1L)
+                        val ds = state.pendingDeleteStartMs
+                        val de = state.pendingDeleteEndMs
+                        val hasRange = ds != null && de != null && kotlin.math.abs(de - ds) >= 50L
+                        val rStart = if (hasRange) minOf(ds!!, de!!) else 0L
+                        val rEnd = if (hasRange) maxOf(ds!!, de!!) else 0L
+                        val beforeFrac = (rStart.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                        val rangeFrac = if (hasRange) {
+                            ((rEnd - rStart).toFloat() / total.toFloat()).coerceIn(0f, 1f - beforeFrac)
+                        } else {
+                            0f
+                        }
+                        val afterFrac = (1f - beforeFrac - rangeFrac).coerceAtLeast(0f)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                        ) {
+                            if (beforeFrac > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(beforeFrac)
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f))
+                                )
+                            }
+                            if (rangeFrac > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(rangeFrac)
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.error)
+                                )
+                            }
+                            if (afterFrac > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(afterFrac)
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f))
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = if (hasRange) {
+                                "سيُحذف من ${rStart.formatDuration()} إلى ${rEnd.formatDuration()} — مدته ${(rEnd - rStart).formatDuration()}"
+                            } else {
+                                "لم تُحدّد نطاقًا بعد. اللون الأحمر يمثّل الجزء الذي سيُحذف."
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (hasRange) {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else {
+                                MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                            }
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.commitDeleteRange() },
+                                enabled = hasRange,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(text = "احذف النطاق المحدّد")
+                            }
+
+                            OutlinedButton(
+                                onClick = { viewModel.clearDeleteSelection() },
+                                enabled = ds != null || de != null
+                            ) {
+                                Text(text = "مسح")
+                            }
+                        }
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
                     shape = RoundedCornerShape(12.dp)
@@ -319,7 +467,7 @@ fun EditorScreen(
                         )
 
                         Text(
-                            text = "لحذف جزء من الوسط (يبقى ما حوله):",
+                            text = "لحذف جزء من الوسط يدويًا (يبقى ما حوله):",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
