@@ -798,6 +798,8 @@ fun EditorScreen(
                             },
                             onSelectClip = { viewModel.selectClip(it) },
                             onScaleChange = { newScale -> zoomScale = newScale },
+                            deleteRangeStartMs = state.pendingDeleteStartMs,
+                            deleteRangeEndMs = state.pendingDeleteEndMs,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
