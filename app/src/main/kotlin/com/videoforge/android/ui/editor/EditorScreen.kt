@@ -20,7 +20,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -90,6 +89,31 @@ fun EditorScreen(
 
     val context = LocalContext.current
     val hasSelection = state.selectedClipId != null
+
+    val selectedClip = state.clips.firstOrNull { it.id == state.selectedClipId }
+    val pointerInSelected = selectedClip != null &&
+        state.currentClipIndex in state.clips.indices &&
+        state.clips[state.currentClipIndex].id == selectedClip.id
+
+    val hint = remember(selectedClip, pointerInSelected, state.currentClipPositionMs, hasSelection) {
+        when {
+            !hasSelection || selectedClip == null ->
+                "اضغط على مقطع في الخط الزمني لتحديده، ثم حرّك المؤشر (زر تشغيل أو إطار) إلى الموضع الذي تريد القص عنده."
+
+            !pointerInSelected ->
+                "المقطع المحدّد لا يمرّ به المؤشر حاليًا. شغّل الفيديو أو اسحب المؤشر داخل المقطع المحدّد لتفعيل أزرار القص."
+
+            else -> {
+                val pos = state.currentClipPositionMs.formatDuration()
+                val dur = selectedClip.durationMs.formatDuration()
+                "المقطع المحدّد مدته $dur والمؤشر عند $pos منه.\n" +
+                    "• قص البداية: يحذف من بداية المقطع حتى $pos.\n" +
+                    "• قص النهاية: يحذف من $pos حتى نهاية المقطع.\n" +
+                    "• تقسيم: يشطر المقطع عند $pos إلى مقطعين.\n" +
+                    "• حذف: يزيل المقطع المحدّد كاملًا."
+            }
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { message ->
@@ -245,15 +269,49 @@ fun EditorScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = stringResource(
-                        R.string.timeline_position,
-                        state.timelinePositionMs.formatDuration(),
-                        state.timelineDurationMs.formatDuration()
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace
-                )
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (pointerInSelected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                            )
+
+                            Text(
+                                text = if (hasSelection) "أداة القص" else "ابدأ بتحديد مقطع",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Text(
+                            text = hint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                        )
+                    }
+                }
 
                 val losslessAvailable = state.losslessAvailable
 
@@ -332,45 +390,75 @@ fun EditorScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.splitSelectedClip() },
-                        enabled = hasSelection
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(text = stringResource(R.string.action_split))
+                        OutlinedButton(
+                            onClick = { viewModel.splitSelectedClip() },
+                            enabled = hasSelection && pointerInSelected,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = stringResource(R.string.action_split))
+                                Text(
+                                    text = "يشطر عند المؤشر",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.trimStartSelectedClip() },
+                            enabled = hasSelection && pointerInSelected,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = stringResource(R.string.action_trim_start))
+                                Text(
+                                    text = "يحذف ما قبل المؤشر",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
 
-                    OutlinedButton(
-                        onClick = { viewModel.trimStartSelectedClip() },
-                        enabled = hasSelection
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(text = stringResource(R.string.action_trim_start))
-                    }
+                        OutlinedButton(
+                            onClick = { viewModel.trimEndSelectedClip() },
+                            enabled = hasSelection && pointerInSelected,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = stringResource(R.string.action_trim_end))
+                                Text(
+                                    text = "يحذف ما بعد المؤشر",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
-                    OutlinedButton(
-                        onClick = { viewModel.trimEndSelectedClip() },
-                        enabled = hasSelection
-                    ) {
-                        Text(text = stringResource(R.string.action_trim_end))
-                    }
-
-                    OutlinedButton(
-                        onClick = { viewModel.deleteSelectedClip() },
-                        enabled = hasSelection
-                    ) {
-                        Text(text = stringResource(R.string.action_delete_clip))
-                    }
-
-                    OutlinedButton(
-                        onClick = { viewModel.addMarkerToSelectedClip() },
-                        enabled = hasSelection
-                    ) {
-                        Text(text = stringResource(R.string.action_add_marker))
+                        OutlinedButton(
+                            onClick = { viewModel.deleteSelectedClip() },
+                            enabled = hasSelection,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = stringResource(R.string.action_delete_clip))
+                                Text(
+                                    text = "يزيل المقطع كاملًا",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
                 }
 
