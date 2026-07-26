@@ -26,10 +26,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import javax.inject.Inject
@@ -99,8 +104,9 @@ class EditorViewModel @Inject constructor(
         }
     }
 
-    private val _uiState = MutableStateFlow(EditorUiState())
-    val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val events: SharedFlow<String> = _events.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -138,49 +144,90 @@ class EditorViewModel @Inject constructor(
         _uiState.update { it.copy(selectedClipId = clipId) }
     }
 
-    fun splitSelectedClip() {
+        fun splitSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         viewModelScope.launch {
+            val before = clipSignature(_uiState.value.clips)
             editorRepository.splitClip(
                 timelineId = params.first,
                 clipId = params.second,
                 offsetMs = params.third
             )
+            val changed = withTimeoutOrNull(1500) {
+                _uiState.first { clipSignature(it.clips) != before }
+                true
+            } == true
+            _events.emit(if (changed) "تم تقسيم المقطع" else "حرّك المؤشر لموضع التقسيم أولًا")
+        }
+    }
+            )
         }
     }
 
-    fun trimStartSelectedClip() {
+        fun trimStartSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         viewModelScope.launch {
+            val before = clipSignature(_uiState.value.clips)
             editorRepository.trimClipStart(
                 timelineId = params.first,
                 clipId = params.second,
                 offsetMs = params.third
             )
+            val changed = withTimeoutOrNull(1500) {
+                _uiState.first { clipSignature(it.clips) != before }
+                true
+            } == true
+            _events.emit(if (changed) "تم قص البداية" else "لا يوجد شيء لقصّه عند هذا الموضع")
+        }
+    }
+            )
         }
     }
 
-    fun trimEndSelectedClip() {
+        fun trimEndSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
         viewModelScope.launch {
+            val before = clipSignature(_uiState.value.clips)
             editorRepository.trimClipEnd(
                 timelineId = params.first,
                 clipId = params.second,
                 offsetMs = params.third
             )
+            val changed = withTimeoutOrNull(1500) {
+                _uiState.first { clipSignature(it.clips) != before }
+                true
+            } == true
+            _events.emit(if (changed) "تم قص النهاية" else "لا يوجد شيء لقصّه عند هذا الموضع")
+        }
+    }
+            )
         }
     }
 
-    fun deleteSelectedClip() {
+       fun deleteSelectedClip() {
         val params = selectedClipActionParams() ?: return
 
+        if (_uiState.value.clips.size <= 1) {
+            viewModelScope.launch { _events.emit("لا يمكن حذف المقطع الوحيد") }
+            return
+        }
+
         viewModelScope.launch {
+            val before = clipSignature(_uiState.value.clips)
             editorRepository.deleteClip(
                 timelineId = params.first,
                 clipId = params.second
+            )
+            val changed = withTimeoutOrNull(1500) {
+                _uiState.first { clipSignature(it.clips) != before }
+                true
+            } == true
+            _events.emit(if (changed) "تم حذف المقطع" else "تعذّر حذف المقطع")
+        }
+    }
             )
         }
     }
@@ -341,7 +388,9 @@ class EditorViewModel @Inject constructor(
 
     private fun updateStateFromEditor(state: EditorState) {
         _uiState.update { current ->
-            val selectedClipId = current.selectedClipId ?: state.clips.firstOrNull()?.id
+            val clipIds = state.clips.map { it.id }
+            val selectedClipId = current.selectedClipId?.takeIf { it in clipIds }
+                ?: state.clips.firstOrNull()?.id
 
             current.copy(
                 timelineId = state.timeline?.id,
@@ -416,7 +465,8 @@ class EditorViewModel @Inject constructor(
                 currentClipIndex = index,
                 currentClipPositionMs = clipPosition,
                 timelinePositionMs = timelinePosition,
-                isPlaying = player.isPlaying
+                isPlaying = player.isPlaying,
+                selectedClipId = clips[index].id
             )
         }
     }
@@ -525,11 +575,29 @@ class EditorViewModel @Inject constructor(
         } else {
             clip.durationMs / 2L
         }
-
         return Triple(
             timelineId,
             clipId,
             offset.coerceIn(0L, clip.durationMs)
+        )
+    }
+
+    fun togglePlayPause() {
+        if (player.isPlaying) player.pause() else player.play()
+    }
+
+    fun stepFrame(direction: Int) {
+        seekTimeline(_uiState.value.timelinePositionMs + direction * FRAME_MS)
+    }
+
+    private fun clipSignature(clips: List<EditorClipUi>): String {
+        return clips.joinToString("|") { "${it.id}:${it.sourceInMs}:${it.sourceOutMs}" }
+    }
+
+    companion object {
+        private const val FRAME_MS = 33L
+    }
+}
         )
     }
 }

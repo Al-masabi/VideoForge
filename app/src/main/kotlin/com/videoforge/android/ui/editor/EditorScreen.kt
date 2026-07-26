@@ -88,8 +88,11 @@ fun EditorScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
-    val hasSelection = state.selectedClipId != null
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     var zoomScale by remember { mutableFloatStateOf(80f) }
     var isScrubbingHud by remember { mutableStateOf(false) }
@@ -200,6 +203,35 @@ fun EditorScreen(
                     update = { playerView ->
                         playerView.player = viewModel.player
                     }
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TextButton(onClick = { viewModel.stepFrame(-1) }) {
+                    Text(text = "◀ إطار")
+                }
+
+                Button(onClick = { viewModel.togglePlayPause() }) {
+                    Text(text = if (state.isPlaying) "إيقاف مؤقت" else "تشغيل")
+                }
+
+                TextButton(onClick = { viewModel.stepFrame(1) }) {
+                    Text(text = "إطار ▶")
+                }
+
+                Text(
+                    text = "${state.timelinePositionMs.formatDuration()} / ${state.timelineDurationMs.formatDuration()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
 
