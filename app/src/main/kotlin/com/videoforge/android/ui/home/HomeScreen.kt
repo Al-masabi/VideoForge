@@ -1,6 +1,10 @@
 package com.videoforge.android.ui.home
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,8 +60,16 @@ import com.videoforge.core.designsystem.component.VfTopBar
 import com.videoforge.core.designsystem.icons.VfIcons
 import com.videoforge.core.designsystem.motion.VfReveal
 import com.videoforge.core.designsystem.theme.PlexMono
+import kotlin.math.PI
+import kotlin.math.sin
 
 private val READABLE_MAX_WIDTH = 840.dp
+
+private data class QuickAction(
+    val titleRes: Int,
+    val icon: ImageVector,
+    val onClick: () -> Unit
+)
 
 @Composable
 fun HomeScreen(
@@ -82,6 +95,25 @@ fun HomeScreen(
         animationSpec = tween(200),
         label = "band_collapse"
     )
+
+    val quickActions = remember(
+        onNavigateToProjects,
+        onNavigateToFilePicker,
+        onNavigateToCompress,
+        onNavigateToBatch,
+        onNavigateToSettings,
+        onNavigateToLogs
+    ) {
+        listOf(
+            QuickAction(R.string.action_new_project, VfIcons.Layers, onNavigateToProjects),
+            QuickAction(R.string.action_open_video, VfIcons.Film, onNavigateToFilePicker),
+            QuickAction(R.string.action_cut_video, VfIcons.Scissors, onNavigateToFilePicker),
+            QuickAction(R.string.action_compress_video, VfIcons.Compress, onNavigateToCompress),
+            QuickAction(R.string.action_batch, VfIcons.Waveform, onNavigateToBatch),
+            QuickAction(R.string.action_settings, VfIcons.Subtitle, onNavigateToSettings),
+            QuickAction(R.string.action_logs, VfIcons.Clock, onNavigateToLogs)
+        )
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -156,91 +188,38 @@ fun HomeScreen(
                             modifier = Modifier
                                 .widthIn(max = READABLE_MAX_WIDTH)
                                 .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             VfSectionHeader(
                                 title = stringResource(R.string.section_quick_actions),
                                 icon = VfIcons.Bolt
                             )
 
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                VfReveal(0) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_new_project),
-                                        icon = VfIcons.Layers,
-                                        onClick = onNavigateToProjects,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
-                                }
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                quickActions.chunked(2).forEachIndexed { rowIndex, rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        rowItems.forEachIndexed { colIndex, action ->
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                VfReveal(rowIndex * 2 + colIndex) {
+                                                    VfActionCard(
+                                                        title = stringResource(action.titleRes),
+                                                        icon = action.icon,
+                                                        onClick = action.onClick,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(96.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
 
-                                VfReveal(1) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_open_video),
-                                        icon = VfIcons.Film,
-                                        onClick = onNavigateToFilePicker,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
-                                }
-
-                                VfReveal(2) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_cut_video),
-                                        icon = VfIcons.Scissors,
-                                        onClick = onNavigateToFilePicker,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
-                                }
-
-                                VfReveal(3) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_compress_video),
-                                        icon = VfIcons.Compress,
-                                        onClick = onNavigateToCompress,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
-                                }
-
-                                VfReveal(4) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_batch),
-                                        icon = VfIcons.Waveform,
-                                        onClick = onNavigateToBatch,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
-                                }
-
-                                VfReveal(5) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_settings),
-                                        icon = VfIcons.Subtitle,
-                                        onClick = onNavigateToSettings,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
-                                }
-
-                                VfReveal(6) {
-                                    VfActionCard(
-                                        title = stringResource(R.string.action_logs),
-                                        icon = VfIcons.Clock,
-                                        onClick = onNavigateToLogs,
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                            .height(104.dp)
-                                    )
+                                        if (rowItems.size == 1) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -307,6 +286,17 @@ private fun LibraryBand(
 ) {
     val colors = MaterialTheme.colorScheme
 
+    val infiniteTransition = rememberInfiniteTransition(label = "film_shimmer")
+    val shimmerPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "film_shimmer_phase"
+    )
+
     VfCard(modifier = modifier) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -317,13 +307,17 @@ private fun LibraryBand(
                     .offset(x = (-collapse * 34f).dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                repeat(14) {
+                repeat(14) { idx ->
+                    val wave = 0.5f + 0.5f * sin(
+                        (idx / 13f) * 2.0 * PI + shimmerPhase * 2.0 * PI
+                    ).toFloat()
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(5.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(colors.primary.copy(alpha = 0.28f))
+                            .background(colors.primary.copy(alpha = 0.16f + 0.32f * wave))
                     )
                 }
             }
