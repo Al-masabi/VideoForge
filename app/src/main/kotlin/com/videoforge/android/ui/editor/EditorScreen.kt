@@ -121,6 +121,12 @@ fun EditorScreen(
         }
     }
 
+    val subtitlePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.importSubtitle(it) }
+    }
+
     var zoomScale by remember { mutableFloatStateOf(80f) }
     var isScrubbingHud by remember { mutableStateOf(false) }
 
@@ -269,6 +275,71 @@ fun EditorScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (state.subtitleTrackName != null) {
+                                            MaterialTheme.colorScheme.secondary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                            )
+
+                            Text(
+                                text = "الترجمة المنفصلة",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+
+                        if (state.subtitleTrackName != null) {
+                            Text(
+                                text = "محمّلة: ${state.subtitleTrackName} • ${state.subtitleCueCount} سطر. ستُصدَّر ملفًّا منفصلًا مزامَنًا، ويُحذف منها ما حذفتَه من الفيديو.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } else {
+                            Text(
+                                text = "لا ترجمة محمّلة. استورد ملف SRT أو VTT — سيُصدَّر منفصلًا ومزامَنًا مع قصّك، دون دمجه في الفيديو.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { subtitlePickerLauncher.launch("*/*") },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = if (state.subtitleTrackName != null) "استبدال الترجمة" else "استيراد ترجمة"
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
