@@ -4,14 +4,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
-import android.os.Environment
 import android.os.IBinder
-import android.provider.MediaStore
+import android.provider.DocumentsContract
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.videoforge.android.R
@@ -70,9 +68,9 @@ class ExportService : Service() {
 
             ACTION_START -> {
                 val timelineId = intent.getStringExtra(EXTRA_TIMELINE_ID)
-                val outputUri = intent.getStringExtra(EXTRA_OUTPUT_URI)
+                val outputTreeUri = intent.getStringExtra(EXTRA_OUTPUT_TREE_URI)
 
-                if (timelineId == null || outputUri == null) {
+                if (timelineId == null || outputTreeUri == null) {
                     stopSelf()
                     return START_NOT_STICKY
                 }
@@ -84,7 +82,7 @@ class ExportService : Service() {
                 )
 
                 serviceScope.launch {
-                    runExport(timelineId, outputUri)
+                    runExport(timelineId, outputTreeUri)
                 }
             }
         }
@@ -102,15 +100,14 @@ class ExportService : Service() {
 
     private suspend fun runExport(
         timelineId: String,
-        outputUri: String
+        outputTreeUri: String
     ) {
         val startedAt = System.currentTimeMillis()
 
         val timeline = timelineDao.getById(timelineId)
 
         if (timeline == null) {
-            stopForeground(STOP_FOREGROUND_DETACH)
-            stopSelf()
+            finishExport()
             return
         }
 
@@ -127,12 +124,69 @@ class ExportService : Service() {
 
         val cues = subtitleCueDao.observeByTimeline(timelineId).first()
 
+        val treeUri = Uri.parse(outputTreeUri)
+
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                treeUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+
+        val treeDocUri = runCatching {
+            val treeId = DocumentsContract.getTreeDocumentId(treeUri)
+            DocumentsContract.buildDocumentUriUsingTree(treeUri, treeId)
+        }.getOrNull()
+
+        if (treeDocUri == null) {
+            operationLogRepository.log(
+                operationType = OPERATION_EXPORT,
+                status = STATUS_FAILED,
+                startedAt = startedAt,
+                durationMs = System.currentTimeMillis() - startedAt,
+                inputUri = timeline.assetUri,
+                outputUri = null,
+                errorMessage = "Cannot access the chosen folder"
+            )
+            showResultNotification(getString(R.string.export_failed))
+            finishExport()
+            return
+        }
+
+        val baseName = timeline.name
+            .substringBeforeLast('.', timeline.name)
+            .ifBlank { "videoforge" }
+
+        val videoUri = runCatching {
+            DocumentsContract.createDocument(
+                contentResolver,
+                treeDocUri,
+                "video/mp4",
+                "$baseName.mp4"
+            )
+        }.getOrNull()
+
+        if (videoUri == null) {
+            operationLogRepository.log(
+                operationType = OPERATION_EXPORT,
+                status = STATUS_FAILED,
+                startedAt = startedAt,
+                durationMs = System.currentTimeMillis() - startedAt,
+                inputUri = timeline.assetUri,
+                outputUri = null,
+                errorMessage = "Cannot create the video file in the chosen folder"
+            )
+            showResultNotification(getString(R.string.export_failed))
+            finishExport()
+            return
+        }
+
         val engine = VideoExportEngine(applicationContext)
         currentEngine = engine
 
         val outcome = engine.export(
             inputUri = Uri.parse(timeline.assetUri),
-            outputUri = Uri.parse(outputUri),
+            outputUri = videoUri,
             clips = clips,
             sourceDurationMs = sourceDurationMs
         ) { progress ->
@@ -143,13 +197,21 @@ class ExportService : Service() {
 
         when (outcome) {
             is ExportOutcome.Success -> {
-                val subtitleName = if (cues.isNotEmpty()) {
-                    val base = timeline.name
-                        .substringBeforeLast('.', timeline.name)
-                        .ifBlank { "videoforge" }
-                    writeSyncedSubtitleToDownloads(cues, clips, base)
-                } else {
-                    null
+                var subtitleName: String? = null
+
+                if (cues.isNotEmpty()) {
+                    val srtUri = runCatching {
+                        DocumentsContract.createDocument(
+                            contentResolver,
+                            treeDocUri,
+                            "application/x-subrip",
+                            "$baseName.srt"
+                        )
+                    }.getOrNull()
+
+                    if (srtUri != null && writeSyncedSubtitleToUri(srtUri, cues, clips)) {
+                        subtitleName = "$baseName.srt"
+                    }
                 }
 
                 operationLogRepository.log(
@@ -158,7 +220,7 @@ class ExportService : Service() {
                     startedAt = startedAt,
                     durationMs = completedAt - startedAt,
                     inputUri = timeline.assetUri,
-                    outputUri = outcome.outputUri,
+                    outputUri = videoUri.toString(),
                     errorMessage = outcome.strategy
                 )
 
@@ -179,7 +241,8 @@ class ExportService : Service() {
                     errorMessage = outcome.message
                 )
 
-                showResultNotification(getString(R.string.export_failed))
+                val detail = outcome.message.take(160)
+                showResultNotification(getString(R.string.export_failed) + ": " + detail)
             }
 
             is ExportOutcome.Cancelled -> {
@@ -197,6 +260,10 @@ class ExportService : Service() {
             }
         }
 
+        finishExport()
+    }
+
+    private fun finishExport() {
         currentEngine = null
         stopForeground(STOP_FOREGROUND_DETACH)
         stopSelf()
@@ -238,35 +305,18 @@ class ExportService : Service() {
         return builder.toString()
     }
 
-    private fun writeSyncedSubtitleToDownloads(
+    private fun writeSyncedSubtitleToUri(
+        uri: Uri,
         cues: List<SubtitleCueEntity>,
-        clips: List<ExportClip>,
-        baseName: String
-    ): String? {
+        clips: List<ExportClip>
+    ): Boolean {
         return runCatching {
             val srt = buildSyncedSrt(cues, clips)
-            val fileName = "$baseName.srt"
-
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "application/x-subrip")
-                put(
-                    MediaStore.MediaColumns.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS
-                )
-            }
-
-            val uri = contentResolver.insert(
-                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                values
-            ) ?: return@runCatching null
-
             contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(srt.toByteArray(Charsets.UTF_8))
             }
-
-            fileName
-        }.getOrNull()
+            true
+        }.getOrDefault(false)
     }
 
     private fun formatSrtTime(ms: Long): String {
@@ -343,7 +393,7 @@ class ExportService : Service() {
         private const val ACTION_CANCEL = "com.videoforge.android.export.CANCEL"
 
         private const val EXTRA_TIMELINE_ID = "extra_timeline_id"
-        private const val EXTRA_OUTPUT_URI = "extra_output_uri"
+        private const val EXTRA_OUTPUT_TREE_URI = "extra_output_tree_uri"
 
         private const val OPERATION_EXPORT = "EXPORT"
         private const val STATUS_SUCCESS = "SUCCESS"
@@ -353,12 +403,12 @@ class ExportService : Service() {
         fun start(
             context: Context,
             timelineId: String,
-            outputUri: String
+            outputTreeUri: String
         ) {
             val intent = Intent(context, ExportService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_TIMELINE_ID, timelineId)
-                putExtra(EXTRA_OUTPUT_URI, outputUri)
+                putExtra(EXTRA_OUTPUT_TREE_URI, outputTreeUri)
             }
 
             ContextCompat.startForegroundService(context, intent)
