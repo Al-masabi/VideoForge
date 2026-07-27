@@ -157,15 +157,15 @@ fun EditorScreen(
         }
     }
 
-    val createDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("video/mp4")
-    ) { uri ->
-        uri?.let { outputUri ->
+    val openTreeLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { treeUri ->
+        treeUri?.let { uri ->
             state.timelineId?.let { timelineId ->
                 ExportService.start(
                     context = context,
                     timelineId = timelineId,
-                    outputUri = outputUri.toString()
+                    outputTreeUri = uri.toString()
                 )
 
                 Toast.makeText(
@@ -181,7 +181,7 @@ fun EditorScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            createDocumentLauncher.launch("videoforge_export.mp4")
+            openTreeLauncher.launch(null)
         }
     }
 
@@ -197,7 +197,7 @@ fun EditorScreen(
             }
 
             if (notificationPermissionGranted) {
-                createDocumentLauncher.launch("videoforge_export.mp4")
+                openTreeLauncher.launch(null)
             } else {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
