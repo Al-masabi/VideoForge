@@ -17,6 +17,7 @@ import com.videoforge.core.adaptive.AdaptiveManager
 import com.videoforge.core.data.editor.EditorClip
 import com.videoforge.core.data.editor.EditorRepository
 import com.videoforge.core.data.editor.EditorState
+import com.videoforge.core.data.subtitle.SubtitleRepository
 import com.videoforge.core.media.WaveformExtractor
 import com.videoforge.ffmpeg.CutSegment
 import com.videoforge.ffmpeg.FfmpegBridge
@@ -73,7 +74,9 @@ data class EditorUiState(
     val timelineFrames: List<TimelineFrameVisual> = emptyList(),
     val waveformPeaks: FloatArray? = null,
     val pendingDeleteStartMs: Long? = null,
-    val pendingDeleteEndMs: Long? = null
+    val pendingDeleteEndMs: Long? = null,
+    val subtitleTrackName: String? = null,
+    val subtitleCueCount: Int = 0
 )
 
 @HiltViewModel
@@ -81,7 +84,8 @@ class EditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val editorRepository: EditorRepository,
-    private val adaptiveManager: AdaptiveManager
+    private val adaptiveManager: AdaptiveManager,
+    private val subtitleRepository: SubtitleRepository
 ) : ViewModel() {
 
     private val assetUri: String = savedStateHandle.get<String>("uri").orEmpty()
@@ -117,6 +121,7 @@ class EditorViewModel @Inject constructor(
             val id = editorRepository.getOrCreateTimeline(assetUri)
             timelineId = id
             observeEditor(id)
+            observeSubtitles(id)
         }
 
         viewModelScope.launch {
@@ -146,6 +151,20 @@ class EditorViewModel @Inject constructor(
 
     fun selectClip(clipId: String) {
         _uiState.update { it.copy(selectedClipId = clipId) }
+    }
+
+    fun importSubtitle(uri: Uri) {
+        val id = _uiState.value.timelineId ?: return
+
+        viewModelScope.launch {
+            val result = subtitleRepository.importSubtitle(id, uri)
+            result.onSuccess { track ->
+                val count = subtitleRepository.observeCues(id).first().size
+                _events.emit("تم استيراد الترجمة: ${track.displayName} • $count سطر")
+            }.onFailure { error ->
+                _events.emit("تعذّر استيراد الترجمة: ${error.message ?: "خطأ غير معروف"}")
+            }
+        }
     }
 
     fun splitSelectedClip() {
@@ -399,6 +418,20 @@ class EditorViewModel @Inject constructor(
         observeJob = viewModelScope.launch {
             editorRepository.observeEditorState(timelineId).collect { state ->
                 onEditorState(state)
+            }
+        }
+    }
+
+    private fun observeSubtitles(timelineId: String) {
+        viewModelScope.launch {
+            subtitleRepository.observeTracks(timelineId).collect { tracks ->
+                _uiState.update { it.copy(subtitleTrackName = tracks.firstOrNull()?.displayName) }
+            }
+        }
+
+        viewModelScope.launch {
+            subtitleRepository.observeCues(timelineId).collect { cues ->
+                _uiState.update { it.copy(subtitleCueCount = cues.size) }
             }
         }
     }
