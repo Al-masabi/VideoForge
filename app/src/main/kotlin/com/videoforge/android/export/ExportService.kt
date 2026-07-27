@@ -4,11 +4,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.os.Environment
 import android.os.IBinder
+import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.videoforge.android.R
@@ -25,7 +28,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -124,94 +126,146 @@ class ExportService : Service() {
         val sourceDurationMs = mediaAssetDao.getByUri(timeline.assetUri)?.durationMs ?: 0L
 
         val cues = subtitleCueDao.observeByTimeline(timelineId).first()
-        val subtitleFile = if (cues.isNotEmpty()) writeTemporarySrt(cues) else null
 
         val engine = VideoExportEngine(applicationContext)
         currentEngine = engine
 
-        try {
-            val outcome = engine.export(
-                inputUri = Uri.parse(timeline.assetUri),
-                outputUri = Uri.parse(outputUri),
-                clips = clips,
-                sourceDurationMs = sourceDurationMs,
-                subtitleUri = subtitleFile?.let { Uri.fromFile(it) }
-            ) { progress ->
-                updateNotification(progress)
-            }
-
-            val completedAt = System.currentTimeMillis()
-
-            when (outcome) {
-                is ExportOutcome.Success -> {
-                    operationLogRepository.log(
-                        operationType = OPERATION_EXPORT,
-                        status = STATUS_SUCCESS,
-                        startedAt = startedAt,
-                        durationMs = completedAt - startedAt,
-                        inputUri = timeline.assetUri,
-                        outputUri = outcome.outputUri,
-                        errorMessage = outcome.strategy
-                    )
-
-                    showResultNotification(
-                        getString(R.string.export_success) + " • " + outcome.strategy
-                    )
-                }
-
-                is ExportOutcome.Failure -> {
-                    operationLogRepository.log(
-                        operationType = OPERATION_EXPORT,
-                        status = STATUS_FAILED,
-                        startedAt = startedAt,
-                        durationMs = completedAt - startedAt,
-                        inputUri = timeline.assetUri,
-                        outputUri = null,
-                        errorMessage = outcome.message
-                    )
-
-                    showResultNotification(getString(R.string.export_failed))
-                }
-
-                is ExportOutcome.Cancelled -> {
-                    operationLogRepository.log(
-                        operationType = OPERATION_EXPORT,
-                        status = STATUS_CANCELLED,
-                        startedAt = startedAt,
-                        durationMs = completedAt - startedAt,
-                        inputUri = timeline.assetUri,
-                        outputUri = null,
-                        errorMessage = null
-                    )
-
-                    showResultNotification(getString(R.string.export_cancelled))
-                }
-            }
-        } finally {
-            subtitleFile?.delete()
-            currentEngine = null
-            stopForeground(STOP_FOREGROUND_DETACH)
-            stopSelf()
+        val outcome = engine.export(
+            inputUri = Uri.parse(timeline.assetUri),
+            outputUri = Uri.parse(outputUri),
+            clips = clips,
+            sourceDurationMs = sourceDurationMs
+        ) { progress ->
+            updateNotification(progress)
         }
+
+        val completedAt = System.currentTimeMillis()
+
+        when (outcome) {
+            is ExportOutcome.Success -> {
+                val subtitleName = if (cues.isNotEmpty()) {
+                    val base = timeline.name
+                        .substringBeforeLast('.', timeline.name)
+                        .ifBlank { "videoforge" }
+                    writeSyncedSubtitleToDownloads(cues, clips, base)
+                } else {
+                    null
+                }
+
+                operationLogRepository.log(
+                    operationType = OPERATION_EXPORT,
+                    status = STATUS_SUCCESS,
+                    startedAt = startedAt,
+                    durationMs = completedAt - startedAt,
+                    inputUri = timeline.assetUri,
+                    outputUri = outcome.outputUri,
+                    errorMessage = outcome.strategy
+                )
+
+                val extra = subtitleName?.let { " • الترجمة: $it" }.orEmpty()
+                showResultNotification(
+                    getString(R.string.export_success) + " • " + outcome.strategy + extra
+                )
+            }
+
+            is ExportOutcome.Failure -> {
+                operationLogRepository.log(
+                    operationType = OPERATION_EXPORT,
+                    status = STATUS_FAILED,
+                    startedAt = startedAt,
+                    durationMs = completedAt - startedAt,
+                    inputUri = timeline.assetUri,
+                    outputUri = null,
+                    errorMessage = outcome.message
+                )
+
+                showResultNotification(getString(R.string.export_failed))
+            }
+
+            is ExportOutcome.Cancelled -> {
+                operationLogRepository.log(
+                    operationType = OPERATION_EXPORT,
+                    status = STATUS_CANCELLED,
+                    startedAt = startedAt,
+                    durationMs = completedAt - startedAt,
+                    inputUri = timeline.assetUri,
+                    outputUri = null,
+                    errorMessage = null
+                )
+
+                showResultNotification(getString(R.string.export_cancelled))
+            }
+        }
+
+        currentEngine = null
+        stopForeground(STOP_FOREGROUND_DETACH)
+        stopSelf()
     }
 
-    private fun writeTemporarySrt(cues: List<SubtitleCueEntity>): File? {
-        return runCatching {
-            val file = File(cacheDir, "subtitle_export_${System.currentTimeMillis()}.srt")
-            val builder = StringBuilder()
+    private fun buildSyncedSrt(
+        cues: List<SubtitleCueEntity>,
+        clips: List<ExportClip>
+    ): String {
+        val builder = StringBuilder()
+        var outIndex = 1
+        var timelineCursor = 0L
 
-            cues.forEachIndexed { index, cue ->
-                builder.append(index + 1).append("\n")
+        for (clip in clips) {
+            val clipStart = clip.sourceInMs
+            val clipEnd = clip.sourceOutMs
+
+            for (cue in cues) {
+                val interStart = maxOf(cue.startMs, clipStart)
+                val interEnd = minOf(cue.endMs, clipEnd)
+
+                if (interEnd <= interStart) continue
+
+                val newStart = timelineCursor + (interStart - clipStart)
+                val newEnd = timelineCursor + (interEnd - clipStart)
+
+                builder.append(outIndex++).append('\n')
                 builder
-                    .append(formatSrtTime(cue.startMs))
+                    .append(formatSrtTime(newStart))
                     .append(" --> ")
-                    .append(formatSrtTime(cue.endMs))
-                    .append("\n")
+                    .append(formatSrtTime(newEnd))
+                    .append('\n')
                 builder.append(cue.text.replace("\r", "")).append("\n\n")
             }
 
-            file.writeText(builder.toString(), Charsets.UTF_8)
-            file
+            timelineCursor += (clipEnd - clipStart)
+        }
+
+        return builder.toString()
+    }
+
+    private fun writeSyncedSubtitleToDownloads(
+        cues: List<SubtitleCueEntity>,
+        clips: List<ExportClip>,
+        baseName: String
+    ): String? {
+        return runCatching {
+            val srt = buildSyncedSrt(cues, clips)
+            val fileName = "$baseName.srt"
+
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/x-subrip")
+                put(
+                    MediaStore.MediaColumns.RELATIVE_PATH,
+                    Environment.DIRECTORY_DOWNLOADS
+                )
+            }
+
+            val uri = contentResolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values
+            ) ?: return@runCatching null
+
+            contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(srt.toByteArray(Charsets.UTF_8))
+            }
+
+            fileName
         }.getOrNull()
     }
 
