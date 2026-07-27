@@ -1,61 +1,78 @@
 package com.videoforge.core.subtitle
 
 object SrtParser {
-
     fun parse(content: String): List<SubtitleCue> {
-        val cues = mutableListOf<SubtitleCue>()
-        val blocks = content.replace("\r\n", "\n").split(Regex("\n\\s*\n"))
-
-        for (block in blocks) {
-            val lines = block.lines().filter { it.isNotBlank() }
-            if (lines.isEmpty()) continue
-
-            val timeLineIndex = lines.indexOfFirst { it.contains("-->") }
-            if (timeLineIndex == -1) continue
-
-            val times = SubtitleTimeParser.parseTimeLine(lines[timeLineIndex]) ?: continue
-
-            val text = lines.drop(timeLineIndex + 1).joinToString("\n").trim()
-
-            if (text.isNotEmpty()) {
-                cues.add(SubtitleCue(times.first, times.second, text))
-            }
-        }
-
-        return cues
+        return parseCues(content, stripWebVttHeader = false)
     }
 }
 
 object VttParser {
-
     fun parse(content: String): List<SubtitleCue> {
-        val cues = mutableListOf<SubtitleCue>()
+        return parseCues(content, stripWebVttHeader = true)
+    }
+}
 
-        val cleaned = content
-            .replace("\r\n", "\n")
-            .removePrefix("WEBVTT")
-            .substringAfter("\n")
+internal fun parseCues(
+    content: String,
+    stripWebVttHeader: Boolean
+): List<SubtitleCue> {
+    val cues = mutableListOf<SubtitleCue>()
 
-        val blocks = cleaned.split(Regex("\n\\s*\n"))
+    var normalized = content
+        .replace("﻿", "")
+        .replace("\r\n", "\n")
+        .replace('\r', '\n')
 
-        for (block in blocks) {
-            val lines = block.lines().filter { it.isNotBlank() }
-            if (lines.isEmpty()) continue
+    if (stripWebVttHeader) {
+        val headerIndex = normalized.indexOf("WEBVTT")
+        if (headerIndex >= 0) {
+            normalized = normalized.substring(headerIndex + "WEBVTT".length)
+        }
+    }
 
-            val timeLineIndex = lines.indexOfFirst { it.contains("-->") }
-            if (timeLineIndex == -1) continue
+    val lines = normalized.lines()
+    val timeRegex = SubtitleTimeParser.CUE_TIME_LINE
 
-            val times = SubtitleTimeParser.parseTimeLine(lines[timeLineIndex]) ?: continue
+    var i = 0
+    while (i < lines.size) {
+        val line = lines[i].trim()
 
-            val text = lines.drop(timeLineIndex + 1).joinToString("\n").trim()
+        if (line.isEmpty()) {
+            i++
+            continue
+        }
 
-            if (text.isNotEmpty()) {
-                cues.add(SubtitleCue(times.first, times.second, text))
+        val match = timeRegex.find(line)
+
+        if (match != null) {
+            val start = SubtitleTimeParser.parseTime(match.groupValues[1])
+            val end = SubtitleTimeParser.parseTime(match.groupValues[2])
+
+            if (start != null && end != null && end > start) {
+                val textLines = mutableListOf<String>()
+                i++
+
+                while (i < lines.size) {
+                    val textLine = lines[i]
+                    if (textLine.trim().isEmpty()) break
+                    if (textLine.contains("-->")) break
+                    textLines.add(textLine.trimEnd())
+                    i++
+                }
+
+                val text = textLines.joinToString("\n").trim()
+                if (text.isNotEmpty()) {
+                    cues.add(SubtitleCue(start, end, text))
+                }
+
+                continue
             }
         }
 
-        return cues
+        i++
     }
+
+    return cues
 }
 
 object SubtitleParserRegistry {
